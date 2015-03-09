@@ -123,8 +123,27 @@ ReadTowns <- function(file='data/geonames/ES.P.dat')
 }
 towns <- ReadTowns();
 
+#float CalculateDistance( float nLon1, float nLat1, float nLon2, float nLat2 )
+#{
+#  uint nRadius = 6371; // Earth's radius in Kilometers
+#    // Get the difference between our two points
+#    // then convert the difference into radians
+#    float nDLat = (nLat2 - nLat1) * (M_PI/180);
+#    float nDLon = (nLon2 - nLon1) * (M_PI/180);
+#    float nA = pow ( sin(nDLat/2), 2 ) + cos(nLat1) * cos(nLat2) * pow ( sin(nDLon/2), 2 );
+# 
+#    float nC = 2 * atan2( sqrt(nA), sqrt( 1 - nA ));
+#    float nD = nRadius * nC;
+# 
+#    return nD; // Return our calculated distance
+#}
+
 AssignTown <- (frame, towns)
 {
+  f <- function(t) {
+    d <- towns$longitude - t$lon;
+    towns[which(min(d))];
+  }
   
 }
 
