@@ -55,8 +55,8 @@ Cut2 <- function(x, breaks)
 #     09 | my_id           | new id given from 1 to |U|         | integer
 #     10 | message         | tokenized message                  | character
 
-ReadTweets <- function( raw.file = 'data/output.s4.unsorted', 
-                        rdata    = 'data/rdata/output.s4.unsorted',
+ReadTweets <- function( raw.file = 'data/s4.201308.unsorted', 
+                        rdata    = 'data/rdata/s4.201308',
                         breaks   = 4000, breaks.lat = NA, breaks.lon = NA) 
 { 
   if (!is.null(rdata) && file.exists(rdata)){
@@ -104,6 +104,28 @@ Users <- function (tweets, rdata='data/rdata/users', cells=NULL)
     save(users, file=rdata)
     u
   }
+}
+
+#############################################################################
+# geographical regions
+
+ReadTowns <- function(file='data/geonames/ES.P.dat') 
+{
+  towns <- read.csv2(file, sep="|", header = T, dec=".",
+                     colClasses=c("integer",          # geonameid
+                                  "factor",           # provincia 
+                                  "character",              # asciiname 
+                                  "numeric", "numeric",       # latitude longitude 
+                                  "factor", "factor", # featureclass featurecode 
+                                  "integer"           # population
+                                  ));
+  towns
+}
+towns <- ReadTowns();
+
+AssignTown <- (frame, towns)
+{
+  
 }
 
 #############################################################################

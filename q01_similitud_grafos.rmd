@@ -1,8 +1,8 @@
 ```{r q01load, echo=FALSE, results='hide'}
-setwd("~/proyecto")
-#setwd("C:/Users/ikun/Dropbox/proyecto")
+#setwd("~/proyecto")
+setwd("C:/Users/ikun/Desktop/project")
 
-source("src/lib.R")
+source("grassfed-flu/lib.R")
 
 ```
 
@@ -33,6 +33,11 @@ CheckSimpleGraph(edges.c.1h.500m) && CheckSimpleGraph(edges.m)
 so to find common rows, it's enough to concatenate them and count the duplicates:
 
 ```{r commonedges}
+GetCommonEdges <- function(g1, g2) {
+  g <- rbind(g1,g2)
+  g[which(duplicated(g)),]
+}
+
 CountCommonEdges <- function(g1, name.g1, g2, name.g2) {
 
   lg1 <- dim(g1)[1];
