@@ -121,7 +121,7 @@ ReadTowns <- function(file='data/geonames/ES.P.dat')
                                   ));
   towns
 }
-towns <- ReadTowns();
+#  towns <- ReadTowns();
 
 #float CalculateDistance( float nLon1, float nLat1, float nLon2, float nLat2 )
 #{
@@ -137,14 +137,37 @@ towns <- ReadTowns();
 # 
 #    return nD; // Return our calculated distance
 #}
+#
+# this is working, but it's damn slow:
+# 
+# > t0 <- proc.time(); assignments <- AssignTown(head(tweets, n=5000), towns); PrintTime("assigning town to 5000 tweets", t0);
+# There were 50 or more warnings (use warnings() to see the first 50)
+# [1] "assigning town to 15000 tweets took 135.7s\n"
+# > (135.7 * dim(tweets)[1] / 15000) / (60^2)
+# [1] 7.780955
 
-AssignTown <- (frame, towns)
+
+AssignTown <- function (frame, towns)
 {
-  f <- function(t) {
-    d <- towns$longitude - t$lon;
-    towns[which(min(d))];
+  # constants
+  earth.radius <- 6371
+  pi180 <- pi/180
+
+  foo <- function(lat, lon) {
+
+    iLat <- as.numeric(lat)
+    iLon <- as.numeric(lon)
+
+    nDLat <- (towns$latitude  - iLat) * pi180;
+    nDLon <- (towns$longitude - iLon) * pi180;
+    distances.1 <- sin(nDLat/2)^2 + cos(towns$latitude) * cos(iLat) * sin(nDLon/2)^2
+    distances   <- earth.radius * 2 * atan2( sqrt(distances.1), sqrt(1 - distances.1) )
+    
+    closest.town <- towns[which(distances == min(distances, na.rm = T)),];
+    closest.town
   }
   
+  apply(frame, 1, function(t) foo(t['lat'],t['lon']) )
 }
 
 #############################################################################
