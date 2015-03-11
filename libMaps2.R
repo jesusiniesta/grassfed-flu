@@ -4,18 +4,30 @@ library(dplyr)
 
 # https://stackoverflow.com/questions/21977720/r-finding-closest-neighboring-point-and-number-of-neighbors-within-a-given-rad/21981693#21981693
 
-third <- (dim(tweets)[1]/3.0)
-size=third;
-htweets <-  head(tweets, n=size);
+size=5000;
+htweets <- head(tweets, n=size);
 mydata <- select(htweets, lat, lon, user.name);
 
-sp.mydata <- mydata
-coordinates(sp.mydata) <- ~lon+lat
-
+# let's divide towns in cuts
 towns$lon <- towns$longitude
 towns$lat <- towns$latitude
+towns$latcut <- cut(towns$lat, breaks=10) # review this, 10 might be too few cuts
 sp.towns <- towns[1:10000,]
 coordinates(sp.towns) <- ~longitude+latitude
+
+# extract the levels
+labs <- levels(towns$latcut)
+latcuts <- data.frame(lower = as.numeric( sub("\\((.+),.*", "\\1", labs) ),
+                 upper = as.numeric( sub("[^,]*,([^]]*)\\]", "\\1", labs)),
+                 level.name = labs);
+
+# assign a cut to each tweet
+# TODO: crear una función que asigna a cada tweet su caja, y usar apply
+mydata$latcut <- 
+
+# create tweet coordinates
+sp.mydata <- mydata
+coordinates(sp.mydata) <- ~lon+lat
 
 t0 <- proc.time(); 
 
@@ -34,8 +46,7 @@ names(newdata) <- c("lat", "lon", "user.name", "geonameid", "provincia", "asciin
 benchmark <- PrintTime("libMaps", t0);
 expected.total.time <- (3096327*benchmark)/size
 printf("for the whole dataset it'll take: %f hours\n", (expected.total.time/(60^2)));
- 
+
 newdata[which(abs(newdata$lat - newdata$tlat)>3),]
 max(abs(newdata$lat - newdata$tlat))
-
 
