@@ -1,0 +1,32 @@
+
+geoNoOrigFFS :
+	'wtf1'| 'wtf2'| 'wtf3'|  'latitude' 'longitude' | 'username' | 'userid' | 'datetime' | 'msg'
+
+
+usernloc :
+	timestamp|lat|lon|userid|username
+
+s1 (sale de select1.awk):
+  timestamp|lat|lon|userid|username|hashtags|mentions(name)
+
+s2 (sale de select2.py):
+  timestamp|lat|lon|userid|username|hashtags|mentions(id)
+
+s3 (sale de select.awk): 
+  timestamp|lat|lon|userid|username|hashtags|mentions(id)|mentiones(name)|message
+
+s4:
+  1        2   3   4      5        6        7            8               9
+  timestamp|lat|lon|userid|username|hashtags|mentions(id)|mentiones(name)|my_id
+  ( my_id is a new id, from 1 to |U| )
+
+x4:
+  timestamp|lat|lon|my_id|mentions(my_id)|hashtags
+
+s5 (sale de get_towns.c): 
+  1        2   3   4         5         6      7        8        9            10              11
+  timestamp|lat|lon|geonameid|provincia|userid|username|hashtags|mentions(id)|mentiones(name)|my_id
+
+t2:
+	1         2         3         4
+ 	geonameid|provincia|latitude|longitude

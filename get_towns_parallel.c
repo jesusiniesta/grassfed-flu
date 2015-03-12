@@ -6,6 +6,8 @@
 #include <math.h>
 #include <limits.h>
 
+#include <omp.h>
+
 #define max(x,y) (x>y)?x:y
 #define min(x,y) (x<y)?x:y
 
@@ -124,15 +126,23 @@ int main (int argc, char ** argv)
 	
 	fprintf(stderr, "now the real shit begins...\n");
 
-	uint i,j;
-	float d, min_d;
+	uint i;
 
-	InitPrintProgress(num_tweets);
+	omp_set_num_threads(4);
 
+	#pragma omp parallel for
 	for (i=0; i<num_tweets; i++) {
+
+		if (i<10) {
+			fprintf(stderr, "im thread %d of %d, with line %d\n", omp_get_thread_num(), 
+			                                                      omp_get_num_threads(),
+			                                                      i);	
+		}
 		
+		uint j;
 		uint min_geoid=-1;
-		min_d = UINT_MAX;
+		float min_d = UINT_MAX;
+		float d;
 
 		for (j=0; j<num_towns; j++) {
 			d = haversine_nounit(tweets.lon[i], tweets.lat[i], towns.lon[j], towns.lat[j]);
@@ -143,8 +153,6 @@ int main (int argc, char ** argv)
 		}
 		
 		tweets.town_id[i] = min_geoid;
-
-		PrintProgress(i);
 	}
 
 	///////////////////////////////////

@@ -121,13 +121,13 @@ FNR != NR {
 		gsub(/[,.;!?¡¿:\-\(\)\[\]\"\'\|]/," ",$8); 
 		num_mentions = split($8,msg," ");
 
-        tid = trim($6)
+        tid = trim($6);
 
         #~ print tid" es "my_id[tid];
 
 		#                       2:latitude          4:userid        6:hashtags   7:mentions (id)         9: my "fake" id
-		#     1:timestamp       |       3:longitude |    5:username |            |         8: mentions   |            10: whole message
-		print get_seconds2($7), loc[1], loc[2],     tid, trim($5),  sw(msg,"#"), gmi(msg), sw(msg, "@"), my_ids[tid], $8; 
+		#     1:timestamp       |       3:longitude |    5:username |            |         8: mentions   |               10: whole message
+		print get_seconds2($7), loc[1], loc[2],     tid, trim($5),  sw(msg,"#"), gmi(msg), sw(msg, "@"), my_ids[tid]; #, $8; 
 	}
 	
 }
