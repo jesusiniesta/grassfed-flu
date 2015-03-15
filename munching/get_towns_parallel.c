@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include <limits.h>
+#include <float.h>
 
 #include <omp.h>
 
@@ -23,6 +24,7 @@ typedef struct
 	float * lon;
 	float * lat;
 	uint  * town_id;
+	uint  * town_idx;
 	char ** rest;
 } Tweets_t;
 
@@ -66,11 +68,11 @@ int main (int argc, char ** argv)
 	int num_towns   = atoi(argv[3]);
 	char* towns_fn  = argv[4];
 
-	printf("get_towns:\n");
-	printf("\tnum_tweets=%d\n", num_tweets);
-	printf("\ttweets_fn =%s\n", tweets_fn);
-	printf("\tnum_towns =%d\n", num_towns);
-	printf("\ttowns_fn  =%s\n", towns_fn);
+	fprintf(stderr, "get_towns:\n");
+	fprintf(stderr, "\tnum_tweets=%d\n", num_tweets);
+	fprintf(stderr, "\ttweets_fn =%s\n", tweets_fn);
+	fprintf(stderr, "\tnum_towns =%d\n", num_towns);
+	fprintf(stderr, "\ttowns_fn  =%s\n", towns_fn);
 
 	Towns_t towns   = Towns_init(num_towns);
 	Tweets_t tweets = Tweets_init(num_tweets);
@@ -140,8 +142,9 @@ int main (int argc, char ** argv)
 		}
 		
 		uint j;
-		uint min_geoid=-1;
-		float min_d = UINT_MAX;
+		uint min_geoid=UINT_MAX;
+		uint min_idx=UINT_MAX;
+		float min_d = FLT_MAX ; 
 		float d;
 
 		for (j=0; j<num_towns; j++) {
@@ -149,27 +152,33 @@ int main (int argc, char ** argv)
 			if (d < min_d) { 
 				min_d = d; 
 				min_geoid = towns.id[j]; 
+				min_idx = j; 
 			}
 		}
 		
 		tweets.town_id[i] = min_geoid;
+		tweets.town_idx[i] = min_idx;
 	}
 
 	///////////////////////////////////
 	// output
 	// 
 	fprintf(stderr, "about to start printing the output\n");
+
+	char * provincia_desconocida = "X";
 	
 	for (rownum=0; rownum<num_tweets; rownum++) {
 		// s5 (sale de get_towns.c): 
   	    // 1        2   3   4         5         6      7        8        9            10              11
   	    // timestamp|lat|lon|geonameid|provincia|userid|username|hashtags|mentions(id)|mentiones(name)|my_id
+		char * provincia = towns.provincia[tweets.town_idx[rownum]];
+			
 		printf("%d|%f|%f|%d|%s|%s\n", 
 		       			 tweets.timestamp[rownum],
                          tweets.lat[rownum],
                          tweets.lon[rownum],
                          tweets.town_id[rownum],
-                         "OH",
+                         strlen(provincia) ? provincia : provincia_desconocida,
                          tweets.rest[rownum]
            );
 	}
@@ -212,6 +221,7 @@ Tweets_t Tweets_init(uint n) {
 	t.lon       = calloc(n, sizeof(float));
 	t.lat       = calloc(n, sizeof(float));
 	t.town_id   = calloc(n, sizeof(uint));
+	t.town_idx  = calloc(n, sizeof(uint));
 	t.rest      = calloc(n, sizeof(char*));
 	return t;
 }
@@ -226,6 +236,7 @@ void Tweets_free(Tweets_t t, uint n) {
 	free(t.lat);
 	free(t.timestamp);
 	free(t.town_id);
+	free(t.town_idx);
 	free(t.rest);
 }
 

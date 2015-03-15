@@ -64,11 +64,11 @@ int main (int argc, char ** argv)
 	int num_towns   = atoi(argv[3]);
 	char* towns_fn  = argv[4];
 
-	printf("get_towns:\n");
-	printf("\tnum_tweets=%d\n", num_tweets);
-	printf("\ttweets_fn =%s\n", tweets_fn);
-	printf("\tnum_towns =%d\n", num_towns);
-	printf("\ttowns_fn  =%s\n", towns_fn);
+	fprintf(stderr, "get_towns:\n");
+	fprintf(stderr, "\tnum_tweets=%d\n", num_tweets);
+	fprintf(stderr, "\ttweets_fn =%s\n", tweets_fn);
+	fprintf(stderr, "\tnum_towns =%d\n", num_towns);
+	fprintf(stderr, "\ttowns_fn  =%s\n", towns_fn);
 
 	Towns_t towns   = Towns_init(num_towns);
 	Tweets_t tweets = Tweets_init(num_tweets);
