@@ -11,7 +11,7 @@ library(splitstackshape)
 
 ###################################################################################
 # AUX CODE
-
+  
 printf <- function(...) invisible(print(sprintf(...)))
 
 PrintTime <- function (name, t0)
@@ -57,8 +57,8 @@ Cut2 <- function(x, breaks)
 #     09 | my_id           | new id given from 1 to |U|         | integer
 #     10 | message         | tokenized message                  | character
 
-ReadTweets <- function( raw.file = 'data/s4.201308.unsorted', 
-                        rdata    = 'data/rdata/s4.201308',
+ReadTweetsOLD <- function( raw.file = 'data/s5.201308.unsorted', 
+                        rdata    = NULL, #'data/rdata/s4.201308',
                         breaks   = 4000, breaks.lat = NA, breaks.lon = NA) 
 { 
   if (!is.null(rdata) && file.exists(rdata)){
@@ -67,7 +67,7 @@ ReadTweets <- function( raw.file = 'data/s4.201308.unsorted',
     tweets
   } else {
     t0 <- proc.time();
-    tweets <- data.frame( read.csv2( raw.file, sep="|", dec=".", header=T, stringsAsFactors=F ))
+    tweets <- data.frame( read.csv2( raw.file, sep="|", dec=".", header=F, stringsAsFactors=F ))
     
     # obtain the cells 
     tweets$boxlat <- Cut2(tweets$lat, if (is.numeric(breaks.lat)) breaks.lat else breaks);
@@ -80,32 +80,28 @@ ReadTweets <- function( raw.file = 'data/s4.201308.unsorted',
   }
 }
 
-Users <- function (tweets, rdata='data/rdata/users', cells=NULL)
+ReadTweets <- function( raw.file = 'data/s5.201308.unsorted') 
+{ 
+    tweets <- data.frame( read.csv2( raw.file, sep="|", dec=".", header=F, stringsAsFactors=F,
+                                     colClasses=c('integer', 'numeric', 'numeric', 'integer',
+                                                  'character', 'integer', rep('character', 4), 'integer')))
+    names(tweets) <- c('timestamp', 'lat', 'lon', 'geonameid', 'provincia', 'userid', 'username', 'hashtags.c', 'mentions.c', 'mentiones.name.c', 'id')
+    tweets
+}
+
+
+Users <- function (tweets)
 {
-  if (!is.null(rdata) && file.exists(rdata)){
-    load(rdata);
-    printf("reading users from rdata");
-    users
-  } else {
     t0 <- proc.time();
     
-    u <- unique(select(tweets, user.id, user.name, my.id))
+    u <- unique(select(tweets, userid, username, id))
     
     # find each user's most common location
-    most.common.locations <- setDT(tweets)[, .N, by=.(user.id, boxlat, boxlon)][, .SD[which.max(N)], by = user.id]
-    most.common.locations <- data.frame(most.common.locations)[c("user.id","boxlat","boxlon")]
+    most.common.locations <- setDT(tweets)[, .N, by=.(id, geonameid, provincia)][, .SD[which.max(N)], by = id]
+    most.common.locations <- data.frame(most.common.locations)[c("id","geonameid","provincia")]
     u <- merge(u, most.common.locations) # boxlat, boxlon
     
-    # read the cells frame to get our cell id
-    if (!is.null(cells)) {
-      u <- merge(u, cells)  # cell.id
-    }
-    
-    PrintTime("extracting the users", t0);
-    users <- u
-    save(users, file=rdata)
     u
-  }
 }
 
 #############################################################################
@@ -197,120 +193,3 @@ G1ByHashtags <- function(tweets)
   g1.by.hashtag
 }
 
-
-#############################################################################
-# geographical regions
-
-ReadTowns <- function(file='data/geonames/ES.P.dat') 
-{
-  towns <- read.csv2(file, sep="|", header = T, dec=".",
-                     colClasses=c("integer",          # geonameid
-                                  "factor",           # provincia 
-                                  "character",              # asciiname 
-                                  "numeric", "numeric",       # latitude longitude 
-                                  "factor", "factor", # featureclass featurecode 
-                                  "integer"           # population
-                     ));
-  towns
-}
-#  towns <- ReadTowns();
-
-#float CalculateDistance( float nLon1, float nLat1, float nLon2, float nLat2 )
-#{
-#  uint nRadius = 6371; // Earth's radius in Kilometers
-#    // Get the difference between our two points
-#    // then convert the difference into radians
-#    float nDLat = (nLat2 - nLat1) * (M_PI/180);
-#    float nDLon = (nLon2 - nLon1) * (M_PI/180);
-#    float nA = pow ( sin(nDLat/2), 2 ) + cos(nLat1) * cos(nLat2) * pow ( sin(nDLon/2), 2 );
-# 
-#    float nC = 2 * atan2( sqrt(nA), sqrt( 1 - nA ));
-#    float nD = nRadius * nC;
-# 
-#    return nD; // Return our calculated distance
-#}
-#
-# this is working, but it's damn slow:
-# 
-# > t0 <- proc.time(); assignments <- AssignTown(head(tweets, n=5000), towns); PrintTime("assigning town to 5000 tweets", t0);
-# There were 50 or more warnings (use warnings() to see the first 50)
-# [1] "assigning town to 15000 tweets took 135.7s\n"
-# > (135.7 * dim(tweets)[1] / 15000) / (60^2)
-# [1] 7.780955
-
-AssignTown <- function (tweets, towns, speed=1)
-{
-  # constants
-  earth.radius <- 6371
-  pi180 <- pi/180
-  
-  foo <- function(lat, lon) {
-    
-    iLat <- as.numeric(lat)
-    iLon <- as.numeric(lon)
-    
-    nDLat <- (towns$latitude  - iLat) * pi180;
-    nDLon <- (towns$longitude - iLon) * pi180;
-    distances.1 <- sin(nDLat/2)^2 + cos(towns$latitude) * cos(iLat) * sin(nDLon/2)^2
-    distances   <- earth.radius * 2 * atan2( sqrt(distances.1), sqrt(1 - distances.1) )
-    
-    closest.town <- towns[which(distances == min(distances, na.rm = T)),];
-    closest.town$geonameid
-  }
-  
-  foo.faster <- function(lat, lon) 
-  {
-    ilat <- as.numeric(lat)
-    ilon <- as.numeric(lon)
-    d <- (acos(sin(ilat)*sin(towns$latitude) +
-                 cos(ilat)*cos(towns$latitude) * cos(towns$longitude-ilon)) 
-          * earth.radius)
-    
-    closest.town <- towns[which(d == min(d, na.rm = T)),];
-    closest.town$geonameid
-  }
-  
-  if (speed == 1) {
-    ff <- foo;
-  } else if (speed == 2) {
-    ff <- foo.faster;
-  }
-  
-  list.of.lists.of.ids <- apply(tweets, 1, function(t) ff(t['lat'],t['lon']) )
-  list.of.ids <- unlist(list.of.lists.of.ids, recursive=FALSE)
-  
-  list.of.ids
-}
-
-if (T) {
-  size=200;
-  htweets <- head(tweets, n=size);
-
-  printf("Speed 1, %d rows\n", size);
-  t0 <- proc.time(); 
-  assignments <- AssignTown(htweets, towns, speed=1); 
-  tspan <- PrintTime("SPEED 1", t0);
-  printf("The whole dataset would take %f hours\n", ((tspan * dim(tweets)[1] / size) / (60^2)));
-  
-  printf("Speed 2, %d rows\n", size);
-  t0 <- proc.time(); 
-  assignments.faster <- AssignTown(htweets, towns, speed=2); 
-  tspan <- PrintTime("SPEED 2", t0);
-  printf("The whole dataset would take %f hours\n", ((tspan * dim(tweets)[1] / size) / (60^2)));
-  
-  count.iguales <- length(which(assignments == assignments.faster));
-  printf("coinciden %d de %d\n", count.iguales, length(assignments));
-
-  htweets$geonameid <- assignments
-  my.towns <- towns[towns$geonameid %in% assignments, c('geonameid', 'asciiname', 'latitude', 'longitude')]
-  htweets <- merge(htweets, my.towns, by='geonameid')
-
-  htweets$geonameid2 <- assignments.faster
-  my.towns2 <- select(towns[towns$geonameid %in% assignments,],
-                                   geonameid2=geonameid, asciiname2=asciiname, 
-                                   latitude2=latitude, longitude2=longitude)
-  htweets <- merge(htweets, my.towns2, by='geonameid2')
-
-
-  errors <- select(filter(htweets, geonameid != geonameid2), longitude, latitude, asciiname, longitude2, latitude2, asciiname2)
-}
