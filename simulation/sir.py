@@ -13,7 +13,7 @@ class Encounter:
         self.time = time
 
 class User:
-    state_names = {'s': 'healthy', 'e': 'exposed', 'i': 'infected', 'r': 'recovered' }
+    state_names = {'s': 'healthy', 'i': 'infected', 'r': 'recovered' }
 
     def __init__(self, id, step, region):
         self.id       = id
@@ -32,8 +32,6 @@ class User:
 
     def healthy(self):
         return self.state == 's'
-    def exposed(self):
-        return self.state == 'e'
     def infected(self):
         return self.state == 'i'
     def recovered(self):
@@ -108,14 +106,14 @@ def mymain(encountersfile, usersfile, steplength, exposedtime, Lambda, recoveryt
                    str(step))
 
         if (u1.infected() and u2.healthy()):
-            u2.state = 'e'
+            u2.state = 'i'
             u2.step = step
             #print("infected!" + str(u2.id) + " in " + u2.region )
             #print(str(u2))
             if (verbose) : print("now: " + str(u2))
             return u2.id
         elif (u1.healthy() and u2.infected()):
-            u1.state = 'e'
+            u1.state = 'i'
             u1.step = step
             #print("infected!" + str(u1.id) + " in " + u1.region )
             #print(str(u1))
@@ -143,7 +141,6 @@ def mymain(encountersfile, usersfile, steplength, exposedtime, Lambda, recoveryt
     new_infections = 0
 
     infected_users = dict()
-    exposed_users  = dict()
 
     for enc in encounters:
         
@@ -157,17 +154,7 @@ def mymain(encountersfile, usersfile, steplength, exposedtime, Lambda, recoveryt
             new_infections=0
             done = set()
             #print("going for step " + str(step))
-            
-            #exposed users may turn infectious
-            for ui in exposed_users:
-                if exposed_users[ui] and users[ui].exposed():
-                    print(str(users[ui].id)+" is infected in "+users[ui].region+" since " + str(users[ui].step))
-                    if users[ui].step > (step+exposedtime):
-                        print("\t so is now infected!")
-                        users[ui].state = 'i'
-                        exposed_users[ui] = False
-                        infected_users[ui] = True
-
+        
             #infectious users may recover
             for ui in infected_users:
                 if infected_users[ui] and users[ui].infected() and users[ui].step > (step+recoverytime):
@@ -185,8 +172,8 @@ def mymain(encountersfile, usersfile, steplength, exposedtime, Lambda, recoveryt
             infected = contact(u1,u2,step)
             if infected:
                 new_infections+=1
-                print("añado " + str(infected) + " a la lista de expuestos")
-                exposed_users[infected] = True
+                print("añado " + str(infected) + " a la lista de infectados")
+                infected_users[infected] = True
             done.add((u1.id, u2.id))
         
     # end of main loop

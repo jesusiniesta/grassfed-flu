@@ -1,8 +1,5 @@
-
 setwd("~/proyecto")
 source("grassfed-flu/lib.R")
-
-tweets <- ReadTweets('data/tweets5.201308.csv')
+tweets <- ReadTweets('data/tweets5.201308.dat')
 users <- Users(tweets)
-write.table(users, file="data/users.2013.08", sep="|")
-
+write.table(users, file="data/users.201308.dat", sep="|", quote=F, col.names=F, row.names=F)
