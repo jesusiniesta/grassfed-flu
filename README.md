@@ -1,5 +1,13 @@
 # grassfed-flu
 
+## todo
+
+data/infection contains the id of each infected user, and the step. it could also include recoveries, but...
+
+now go to rstudio and print a point for each one. you could copy moro's code to make a video too for bonus points.
+
+## how-to
+
 filter the raw data
 
 ```bash
@@ -44,5 +52,5 @@ write.table(users, file="data/users.201308.dat", sep="|", quote=F, col.names=F)
 SEIR simulation
 
 ```bash
-./grassfed-flu/simulation/seir.py --encountersfile data/encounters.30m.250m.201308.el --usersfile data/
+./grassfed-flu/simulation/sir.py --encountersfile data/encounters.30m.250m.201308.el --usersfile data/users.201308.dat --print_infections > data/sir_infection.dat
 ```

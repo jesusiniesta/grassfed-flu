@@ -1,6 +1,6 @@
 ```{r q01load, echo=FALSE, results='hide'}
-#setwd("~/proyecto")
-setwd("C:/Users/ikun/Desktop/project")
+setwd("~/proyecto")
+#setwd("C:/Users/ikun/Desktop/project")
 
 source("grassfed-flu/lib.R")
 

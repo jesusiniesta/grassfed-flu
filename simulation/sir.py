@@ -2,6 +2,7 @@
 
 import click                       # arguments management
 from random import random, randint # random number generation
+import sys                         # stderr
 
 ##############################################################
 ## DATA
@@ -14,34 +15,27 @@ class Encounter:
 
 class User:
     state_names = {'s': 'healthy', 'i': 'infected', 'r': 'recovered' }
-
-    def __init__(self, id, step, region):
+    def __init__(self, id, region):
         self.id       = id
         self.state    = 's'
-        self.step     = step
+        self.istep    = -1
+        self.rstep    = -1
         self.region   = region
 
     def __str__(self):
         return "user "+str(self.id)+" lives in "+self.region+" and is "+self.state_names[self.state]+" since step "+str(self.step)+""
-
-    def shortstr(self):
-        return str(self.id)+"("+self.region+","+self.state+")"
-
-    def readable_state(self):
-        return self.state_names[self.state]
-
-    def healthy(self):
-        return self.state == 's'
-    def infected(self):
-        return self.state == 'i'
-    def recovered(self):
-        return self.state == 'r'
+    
+    def shortstr(self):       return str(self.id)+"("+self.region+","+self.state+")"
+    def readable_state(self): return self.state_names[self.state]
+    def healthy(self):        return self.state == 's'
+    def infected(self):       return self.state == 'i'
+    def recovered(self):      return self.state == 'r'
 
 def ReadUsers(filename):
     users = dict()
     for line in open(filename):
         parts = line.strip().split('|')
-        users[int(parts[0])] = User(id=int(parts[0]), step=-1, region=parts[4])
+        users[int(parts[0])] = User(id=int(parts[0]), region=parts[4])
     return users
 
 def ReadEncounters(filename):
@@ -52,11 +46,9 @@ def ReadEncounters(filename):
     return encounters
 
 
-
-
 ##############################################################
 ##
-
+    
 # make them global, just for fun
 users = dict()
 encounters = dict()
@@ -67,24 +59,39 @@ encounters = dict()
 @click.option('-s', "steplength",   default=30,     help='step length, in minutes (30 by default).')
 @click.option('-l', "Lambda",       default=0.4,    help='Lambda.')
 @click.option('-r', "recoverytime", default=5*24*2, help='time to recovery, in steps (default=5 days).')
+@click.option("-p", "printmode",    default='a',    help="a => weekly by-region aggregation; i => each infection")
 
-def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime):
+@click.option("-g", "granularity",    default='a',    help="granularity, provincia (p) or comunidad (c)")
+
+
+def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmode, granularity):
 
     ########################################
-    ## input
+    ## input    
 
-    steps_per_week = (7*24*60)/steplength # minutes
+    steps_per_week  = (7*24*60)/steplength # minutes
+    steplength_s    = steplength*60
+    granularity     = granularity.lower()
 
-    steplength_s = steplength*60
+    printmode       = 'aggregation' if (len(printmode) > 0 && printmode[0].lower() == 'a') else 'infections'
+    print_aggregate = printmode
 
-    click.echo(' ****************************')
-    click.echo(' * encounters file:   %s'    % encountersfile)
-    click.echo(' * users file:        %s'    % usersfile)
-    click.echo(' * step length (min): %d'    % steplength)
-    click.echo(' * Lambda:            %0.3f' % Lambda)
-    click.echo(' * stepsrecovery:     %d'    % recoverytime)
-    click.echo(' * steps per week:    %d'    % steps_per_week)
-    click.echo(' ****************************')
+    granularity     = 'aggregation' if (len(granularity> 0 && granularity].lower() == 'a') else 'infections'
+
+    click.echo(' ****************************',                   file=sys.stderr)
+    click.echo(' * encounters file:   %s'    % encountersfile,    file=sys.stderr)
+    click.echo(' * users file:        %s'    % usersfile,         file=sys.stderr)
+    click.echo(' * step length (min): %d'    % steplength,        file=sys.stderr)
+    click.echo(' * Lambda:            %0.3f' % Lambda,            file=sys.stderr)
+    click.echo(' * stepsrecovery:     %d'    % recoverytime,      file=sys.stderr)
+    click.echo(' * steps per week:    %d'    % steps_per_week,    file=sys.stderr)
+    click.echo(' * printmode:         '+printmode,                file=sys.stderr)
+    click.echo(' *      (aggregation: '+str(print_aggregate)+')', file=sys.stderr)
+    click.echo(' * granularity:       '+granularity,              file=sys.stderr)    
+
+    click.echo(' ****************************',                   file=sys.stderr)
+
+    exit()
 
     users = ReadUsers(usersfile)
     encounters = ReadEncounters(encountersfile)
@@ -123,6 +130,7 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime):
     for u in madrilenos:
         if (u.region == 'M' and random() < 0.5):
             u.state = 'i'
+            u.istep = 0
 
 
     ########################################
@@ -132,19 +140,14 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime):
 
         if (u1.infected() and u2.healthy()):
             u2.state = 'i'
-            u2.step = step
+            u2.istep = step
             return u2.id
         elif (u1.healthy() and u2.infected()):
             u1.state = 'i'
-            u1.step = step
+            u1.istep = step
             return u1.id
         else:
             return 0
-
-    def turn_infectious(u, step):
-        if (u.exposed() and u.step > (step + exposedtime)):
-            u.step = step
-            u.state = 'i'
 
     ########################################
     ## simulation loop
@@ -172,19 +175,19 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime):
 
             #infectious users may recover
             for ui in infected_users:
-                if infected_users[ui] and users[ui].infected() and users[ui].step > (step+recoverytime):
+                if infected_users[ui] and users[ui].infected() and users[ui].istep > (step+recoverytime):
                     #~ print(str(users[ui].id)+" became infected in "+users[ui].region+"!")
                     users[ui].state = 'r'
+                    users[ui].rstep = step
                     infected_users[ui] = False
 
-            if ((step % steps_per_week) == 1): # first step after week change
-                week += 1
-                print_summary(week, users)
-
+            if print_aggregate:
+                if ((step % steps_per_week) == 1): # first step after week change
+                    week += 1
+                    print_summary(week, users)
 
         u1 = users[enc.u1]
         u2 = users[enc.u2]
-
 
         # infection?
         if ((u1.id, u2.id) not in done):
@@ -193,12 +196,23 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime):
                 new_infections+=1
                 #~ print("añado " + str(infected) + " a la lista de infectados")
                 infected_users[infected] = True
+
+                #if not print_aggregate:
+                #    print('i|'+str(step)+'|'+str(infected))
+
             done.add((u1.id, u2.id))
 
     # end of main loop
 
     # print final state too
-    print_summary("end", users)
+    if print_aggregate:
+        print_summary("end", users)
+    else: 
+        su = sorted(users.values(), key= lambda u: u.istep)
+        for u in su:
+            if u.istep != -1:
+                print(str(u.istep)+"|"+str(u.rstep)+"|"+str(u.id)+"|"+str(u.region))
+
 
 if __name__ == '__main__':
     mymain()

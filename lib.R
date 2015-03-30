@@ -1,13 +1,14 @@
 
-#setwd("~/proyecto")
+setwd("~/Dropbox/proyecto")
 #setwd("C:/Users/ikun/Dropbox/proyecto")
 
+library(splitstackshape)
 library(ggplot2)
 library(maps)
 library(igraph)
 library(data.table)
 library(dplyr)
-library(splitstackshape)
+
 
 ###################################################################################
 # AUX CODE
@@ -80,12 +81,15 @@ ReadTweetsOLD <- function( raw.file = 'data/s5.201308.unsorted',
   }
 }
 
-ReadTweets <- function( raw.file = 'data/s5.201308.unsorted') 
+ReadTweets <- function( raw.file = 'data/s5.201308.unsorted', breaks   = 4000, breaks.lat = NA, breaks.lon = NA) 
 { 
     tweets <- data.frame( read.csv2( raw.file, sep="|", dec=".", header=F, stringsAsFactors=F,
                                      colClasses=c('integer', 'numeric', 'numeric', 'integer',
                                                   'character', 'integer', rep('character', 4), 'integer')))
+
     names(tweets) <- c('timestamp', 'lat', 'lon', 'geonameid', 'provincia', 'userid', 'username', 'hashtags.c', 'mentions.c', 'mentiones.name.c', 'id')
+
+
     tweets
 }
 
@@ -95,11 +99,6 @@ Users <- function (tweets)
     t0 <- proc.time();
     
     u <- unique(select(tweets, userid, username, id))
-    
-    # find each user's most common location
-    most.common.locations <- setDT(tweets)[, .N, by=.(id, geonameid, provincia)][, .SD[which.max(N)], by = id]
-    most.common.locations <- data.frame(most.common.locations)[c("id","geonameid","provincia")]
-    u <- merge(u, most.common.locations) # boxlat, boxlon
     
     u
 }

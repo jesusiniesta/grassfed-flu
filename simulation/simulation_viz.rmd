@@ -1,0 +1,103 @@
+```{r, simviz_load, echo=FALSE, results='hide'}
+source("grassfed-flu/lib.R")
+
+tweets <- ReadTweets('data/tweets5.201308.dat')
+users <- Users(tweets)
+```
+
+ahora dividimos los tweets en celdas, y asignamos a cada usuario su celda más común.
+
+```{r obtaincells}
+
+# obtain the cells 
+tweets$boxlat <- Cut2(tweets$lat, 4000);
+tweets$boxlon <- Cut2(tweets$lon, 4000);
+
+# find each user's most common location
+most.common.locations <- setDT(tweets)[, .N, by=.(id, geonameid, provincia, boxlat, boxlon)][, .SD[which.max(N)], by = id]
+most.common.locations <- data.frame(most.common.locations)[c("id","geonameid","provincia","boxlat","boxlon")]
+users <- merge(users, most.common.locations) # boxlat, boxlon
+```
+
+# example 
+# 605|-1|26024|MA
+
+read the ouput of the sir simulation
+
+```{r readinfections}
+infections <- data.frame(read.csv2('~/Dropbox/proyecto/data/sir_infection.dat', 
+                                   sep="|", header=F, stringsAsFactors=F, dec='.',
+                                   colClasses = c('integer', 'integer', 
+                                                  'integer', 'factor')))
+names(infections) <- c('istep', 'rstep', 'id', 'provincia')
+infections <- select(infections, istep, rstep, id)
+head(infections)
+```
+
+plot and 
+
+```{r plotit}
+infected_users <- merge(users, infections)
+
+base.map <- map_data("world", "spain")
+
+plotInfectionStep <- function(i)
+{
+  ggplot(base.map, aes(long, lat)) +
+    geom_polygon(aes(group = group), fill = "darkslategrey") +
+    geom_point(data = filter(infected_users, istep < i), aes(boxlon, boxlat), colour = "red")
+}
+plotInfectionStep(max(infected_users$istep)) # plot the final state
+
+for (i in 0:max(infected_users$istep)) {
+  printf("%d out of %d", i, max(infected_users$istep))
+  p <- plotInfectionStep(i)
+  ggsave(filename = sprintf("~/Desktop/infection%03d.jpeg", i), plot = p)
+}
+
+system("avconv -r 30 -i ~/Desktop/infection%03d.jpeg ~/Desktop/output.mp4")
+
+```
+
+
+```{r yeoldecode}
+
+## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+
+PlotGraphOnMap <- function(dataset, graph, cells, use.boxes = F, base.map = map_data("world", "spain"), sample.size=NULL) 
+{
+  t0 <- proc.time()  
+  e <- get.data.frame(g2, c("edges"))
+  if (!is.null(sample.size)) {
+    e <- e[sample(nrow(e), sample.size), ]
+  }
+
+  e$x    <- cells[match(e$from, b$cell.id),"boxlon"]
+  e$y    <- cells[match(e$from, b$cell.id),"boxlat"]
+  e$xend <- cells[match(e$to,   b$cell.id),"boxlon"]
+  e$yend <- cells[match(e$to,   b$cell.id),"boxlat"]
+  e$lw   <- log(e$weight)
+
+  edge.weights <<- e$weight
+
+  max.weight <- max(e$weight)
+  print(max.weight)
+
+  # TODO: aplicar un suavizado más inteligente
+  # la distribución seguirá una power-law; el máximo será brutal
+
+  suavizado1 <- function(w, maxw) { w/maxw }
+  suavizado2 <- function(w, maxw) { (w+(maxw-w)*0.01)/maxw }
+
+  p <- ggplot(base.map, aes(long, lat)) +
+    geom_polygon(aes(group = group), fill = "darkslategrey") +
+    geom_point(data = cells, aes(boxlon, boxlat), colour = "red") +
+    geom_segment(data = e, aes(x=x, y=y, xend=xend, yend=yend),
+                 alpha=suavizado1(e$weight, max.weight))
+
+  PrintTime("PlotGraphOnMap", t0)  
+  p
+}
+#  PlotGraphOnMap(dataset=d, use.boxes = T, cells=b, graph=g2, sample.size=NULL)
+```
+
