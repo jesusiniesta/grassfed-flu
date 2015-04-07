@@ -2,6 +2,10 @@
 #set -x
 set -e
 
+
+# OBSOLETE:
+# needs to be updated to use the new get_g
+
 PWD=`pwd`
 BASE="${PWD%%proyecto*}"proyecto/
 

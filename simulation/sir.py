@@ -7,6 +7,11 @@ import sys                         # stderr
 ##############################################################
 ## DATA
 
+VERBOSE = True
+def LogIf(msg, flag = VERBOSE):
+    if True:
+        print(msg, file=sys.stderr)
+
 class Encounter:
     def __init__(self, u1, u2, time):
         self.u1 = u1
@@ -24,7 +29,7 @@ class User:
 
     def __str__(self):
         return "user "+str(self.id)+" lives in "+self.region+" and is "+self.state_names[self.state]+" since step "+str(self.step)+""
-    
+
     def shortstr(self):       return str(self.id)+"("+self.region+","+self.state+")"
     def readable_state(self): return self.state_names[self.state]
     def healthy(self):        return self.state == 's'
@@ -48,7 +53,7 @@ def ReadEncounters(filename):
 
 ##############################################################
 ##
-    
+
 # make them global, just for fun
 users = dict()
 encounters = dict()
@@ -60,23 +65,22 @@ encounters = dict()
 @click.option('-l', "Lambda",       default=0.4,    help='Lambda.')
 @click.option('-r', "recoverytime", default=5*24*2, help='time to recovery, in steps (default=5 days).')
 @click.option("-p", "printmode",    default='a',    help="a => weekly by-region aggregation; i => each infection")
-
-@click.option("-g", "granularity",    default='a',    help="granularity, provincia (p) or comunidad (c)")
+@click.option("-g", "granularity",  default='p',    help="granularity, provincia (p) or comunidad (c)")
 
 
 def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmode, granularity):
 
     ########################################
-    ## input    
+    ## input
 
     steps_per_week  = (7*24*60)/steplength # minutes
     steplength_s    = steplength*60
     granularity     = granularity.lower()
 
-    printmode       = 'aggregation' if (len(printmode) > 0 && printmode[0].lower() == 'a') else 'infections'
-    print_aggregate = printmode
+    printmode       = 'aggregation' if (len(printmode) > 0 and printmode[0].lower() == 'a') else 'infections'
+    print_aggregate = printmode == 'aggregation'
 
-    granularity     = 'aggregation' if (len(granularity> 0 && granularity].lower() == 'a') else 'infections'
+    granularity     = 'provincia' if (len(granularity) > 0 and granularity[0].lower() == 'a') else 'comunidad'
 
     click.echo(' ****************************',                   file=sys.stderr)
     click.echo(' * encounters file:   %s'    % encountersfile,    file=sys.stderr)
@@ -87,11 +91,9 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmod
     click.echo(' * steps per week:    %d'    % steps_per_week,    file=sys.stderr)
     click.echo(' * printmode:         '+printmode,                file=sys.stderr)
     click.echo(' *      (aggregation: '+str(print_aggregate)+')', file=sys.stderr)
-    click.echo(' * granularity:       '+granularity,              file=sys.stderr)    
+    click.echo(' * granularity:       '+granularity,              file=sys.stderr)
 
     click.echo(' ****************************',                   file=sys.stderr)
-
-    exit()
 
     users = ReadUsers(usersfile)
     encounters = ReadEncounters(encountersfile)
@@ -128,7 +130,7 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmod
     madrilenos = [u for u in users.values() if u.region == 'M']
 
     for u in madrilenos:
-        if (u.region == 'M' and random() < 0.5):
+        if (u.region == 'M'): # and random() < 0.5):
             u.state = 'i'
             u.istep = 0
 
@@ -141,10 +143,12 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmod
         if (u1.infected() and u2.healthy()):
             u2.state = 'i'
             u2.istep = step
+            LogIf("\t\tuser 2, #{0}, becomes infected at step {1}".format(u2.id, u2.istep))
             return u2.id
         elif (u1.healthy() and u2.infected()):
             u1.state = 'i'
             u1.istep = step
+            LogIf("\t\tuser 1, #{0}, becomes infected at step {1}".format(u1.id, u1.istep))
             return u1.id
         else:
             return 0
@@ -166,6 +170,8 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmod
 
         # NEXT STEP
         if enc.time > next_step:
+
+            LogIf("new week, at {0} starts week #{1}".format(next_step, step))
 
             start_of_step = next_step
             next_step += steplength_s
@@ -189,16 +195,17 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmod
         u1 = users[enc.u1]
         u2 = users[enc.u2]
 
+        LogIf("\t{0}, {1} from {2}, meets {3}, {4} from {5}".format(
+              u1.id, u1.readable_state(), u1.region,
+              u2.id, u2.readable_state(), u2.region))
+
         # infection?
         if ((u1.id, u2.id) not in done):
             infected = contact(u1,u2,step)
             if infected:
                 new_infections+=1
-                #~ print("añado " + str(infected) + " a la lista de infectados")
+                LogIf("\tañado " + str(infected) + " a la lista de infectados")
                 infected_users[infected] = True
-
-                #if not print_aggregate:
-                #    print('i|'+str(step)+'|'+str(infected))
 
             done.add((u1.id, u2.id))
 
@@ -207,7 +214,7 @@ def mymain(encountersfile, usersfile, steplength, Lambda, recoverytime, printmod
     # print final state too
     if print_aggregate:
         print_summary("end", users)
-    else: 
+    else:
         su = sorted(users.values(), key= lambda u: u.istep)
         for u in su:
             if u.istep != -1:

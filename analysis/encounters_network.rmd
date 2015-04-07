@@ -1,0 +1,124 @@
+---
+title: "Encounters Network Analysis"
+author: "jesusiniesta"
+date: "03/04/2015"
+output: html_document
+---
+
+```{r data_load echo=FALSE results='hide'}
+setwd("~/Dropbox/proyecto")
+source("grassfed-flu/lib.R")
+tweets <- ReadTweets('data/tweets5.201308.dat')
+users <- Users(tweets)
+
+encounters <- data.frame(read.csv2('data/encounters.1h.1km.201308.el', sep='\t', header=F, colClasses = c('integer', 'integer', 'integer')))
+names(encounters) <- c('id1', 'id2', 'ts')
+
+# as proper dates
+encounters$ts2    <- as.POSIXct(encounters$ts,     origin = "2013-08-01 00:00:00")
+```
+
+distribution over time:
+
+```{r distrib_over_time}
+break.length <- 60*24 # break.length in minutes, please
+
+time.length    <- 31*24*60*60
+time.range     <- range(1,time.length) # yep, hardcoded time. sorry.
+breaks.number  <- time.length/(break.length*60)
+dataset.origin <- "2013-08-01 00:00:00"
+
+print(breaks.number)
+
+encounter.time.boxes <- Cut2(encounters$ts, breaks = breaks.number, r=time.range)
+encounter.time.boxes <- as.POSIXct(encounter.time.boxes, origin = dataset.origin)
+encounter.frequency <- data.frame(table(encounter.time.boxes))
+names(encounter.frequency) <- c("time","encounters")
+
+tweet.time.boxes <- Cut2(tweets$timestamp, breaks = breaks.number, r=time.range)
+tweet.time.boxes <- as.POSIXct(tweet.time.boxes, origin = dataset.origin)
+tweet.frequency <- data.frame(table(tweet.time.boxes))
+names(tweet.frequency) <- c("time","tweets")
+
+time.counts <- merge(tweet.frequency, encounter.frequency)
+time.counts$time <- as.POSIXct(time.counts$time)
+
+ggplot(data = time.counts, aes(x = time)) + 
+  geom_line(aes(y = tweets), colour = 'red') +
+  geom_line(aes(y = encounters), colour = 'blue') +
+  scale_x_datetime("Date", breaks = time.counts$time) + 
+  scale_y_continuous("Frequency") + 
+  ggtitle("Number of encounters and tweets over time")
+```
+
+```{r distrib_over_time2}
+
+# frequency over 2-hour boxes
+
+countFrequencies <- function(encounters, tweets, break.length = 120) {
+  # break.length in minutes, please
+  
+  time.length    <- 31*24*60*60
+  time.range     <- range(1,time.length) # yep, hardcoded time. sorry.
+  breaks.number  <- time.length/(break.length*60)
+  dataset.origin <- "2013-08-01 00:00:00"
+
+  print(breaks.number)
+  
+  encounter.time.boxes <- Cut2(encounters$ts, breaks = breaks.number, r=time.range)
+  encounter.time.boxes <- as.POSIXct(encounter.time.boxes, origin = dataset.origin)
+  encounter.frequency <- data.frame(table(encounter.time.boxes))
+  names(encounter.frequency) <- c("time","encounters")
+  
+  tweet.time.boxes <- Cut2(tweets$timestamp, breaks = breaks.number, r=time.range)
+  tweet.time.boxes <- as.POSIXct(tweet.time.boxes, origin = dataset.origin)
+  tweet.frequency <- data.frame(table(tweet.time.boxes))
+  names(tweet.frequency) <- c("time","tweets")
+  
+  time.counts <- merge(tweet.frequency, encounter.frequency)
+  time.counts$time <- as.POSIXct(time.counts$time)
+  
+  time.counts
+}
+t <- countFrequencies(encounters, tweets, 60*24)
+
+plotFrequencies <- function(time.counts) {
+  ggplot(data = time.counts, aes(x = time)) + 
+    geom_line(aes(y = tweets), colour = 'red') +
+    geom_line(aes(y = encounters), colour = 'blue') +
+    scale_x_datetime("Date", breaks = range(1,31)) + 
+    scale_y_continuous("Frequency") + 
+    ggtitle("Number of encounters and tweets over time")
+}
+plotFrequencies(t)
+
+```
+
+
+```{r distrib_over_time}
+
+encounters$box.ts <- split(encounters$ts, 60*60)
+table(encounters$box.ts)
+
+plot(table(encounters$box.ts))
+
+# based on http://www.r-bloggers.com/plotting-the-frequency-of-twitter-hashtag-usage-over-time-with-r-and-ggplot2/
+ggplot(data=encounters, aes(x=ts)) + 
+  geom_bar(aes(fill=..count..), binwidth=60*60*2) + 
+  scale_x_datetime("Date") + 
+  scale_y_continuous("Frequency") + 
+  ggtitle("Number of encounters over time")
+ 
+```
+
+now let's compare encounters and tweets distribution:
+
+```{r tweets_encoutners_distr}
+
+ggplot(data=encounters, aes(x=ts)) + 
+  geom_density(aes(fill=..count..), binwidth=60*60*2) + 
+  scale_x_datetime("Date") + 
+  scale_y_continuous("Frequency") + 
+  ggtitle("Number of encounters over time")
+
+```

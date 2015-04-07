@@ -1,5 +1,5 @@
 
-setwd("~/Dropbox/proyecto")
+#setwd("~/Dropbox/proyecto")
 #setwd("C:/Users/ikun/Dropbox/proyecto")
 
 library(splitstackshape)
@@ -26,11 +26,13 @@ PrintTime <- function (name, t0)
   s;
 }
 
-Cut2 <- function(x, breaks) 
+Cut2 <- function(x, breaks, r=NULL) 
 {
   # makes boxes, and represents them by their mean
   # from http://stackoverflow.com/a/5916794/462087
-  r <- range(x)
+  if (is.null(r))
+    r <- range(x)
+  
   b <- seq(r[1], r[2], length=2*breaks+1)
   brk <- b[0:breaks*2+1]
   mid <- b[1:breaks*2]
